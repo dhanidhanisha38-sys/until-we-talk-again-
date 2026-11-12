@@ -18,8 +18,76 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew || true
+    - name: Create Android Project Structure
+      run: |
+        if [ -f "app/app/app/src/main/java/com/example/untilwetalkagain/MainActivity.kt" ]; then
+          mkdir -p app/src/main/java/com/example/untilwetalkagain
+          mv app/app/app/src/main/java/com/example/untilwetalkagain/MainActivity.kt app/src/main/java/com/example/untilwetalkagain/MainActivity.kt
+          rm -rf app/app
+        fi
+
+        cat << 'EOF' > settings.gradle.kts
+        pluginManagement {
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+        dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        rootProject.name = "UntilWeTalkAgain"
+        include(":app")
+        EOF
+
+        cat << 'EOF' > build.gradle.kts
+        plugins {
+            id("com.android.application") version "8.2.2" apply false
+            id("org.jetbrains.kotlin.android") version "1.9.22" apply false
+            id("com.google.devtools.ksp") version "1.9.22-1.0.17" apply false
+        }
+        EOF
+
+        cat << 'EOF' > gradle.properties
+        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+        android.useAndroidX=true
+        kotlin.code.style=official
+        android.nonTransitiveRClass=true
+        EOF
+
+        mkdir -p app/src/main
+        cat << 'EOF' > app/src/main/AndroidManifest.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <application
+                android:allowBackup="true"
+                android:label="Until We Talk Again"
+                android:supportsRtl="true"
+                android:theme="@android:style/Theme.Material.Light.NoActionBar">
+                <activity
+                    android:name=".MainActivity"
+                    android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+            </application>
+        </manifest>
+        EOF
+
+    - name: Download & Setup Gradle Wrapper
+      run: |
+        wget https://services.gradle.org/distributions/gradle-8.5-bin.zip
+        unzip -q gradle-8.5-bin.zip
+        export PATH=$PWD/gradle-8.5/bin:$PATH
+        gradle wrapper --gradle-version 8.5
+        chmod +x gradlew
 
     - name: Build Debug APK
       run: ./gradlew assembleDebug
